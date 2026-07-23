@@ -1,12 +1,40 @@
 <!DOCTYPE html>
 <html>
-<head><title>System Architecture</title></head>
+<head>
+    <title>System Architecture Summary</title>
+</head>
 <body>
-    <h2>Architecture & Design Overview</h2>
-    <p>To meet the strict real-time, low-latency constraints dictated by the 20ms frame clock, standard ARQ feedback (NACKs) was discarded. This prevents the severe latency inflation caused by Round-Trip Time (RTT) negotiations across a hostile network. Instead, a transport-layer Forward Error Correction (FEC) protocol was successfully implemented.</p>
-    <ul>
-        <li><strong>Sender (Block-XOR):</strong> The sender organically groups inbound frames into pairs. It transmits Frame 0 (164 bytes) and Frame 1 (164 bytes) sequentially, immediately followed by a redundant FEC packet (164 bytes). This FEC packet contains the XOR of the two previous payloads. The total overhead is bounded statically at 1.54x, safely passing the strict 2.0x requirement.</li>
-        <li><strong>Receiver (Jitter Buffer):</strong> The receiver allocates a flat array mapping to act as a resilient jitter buffer, inherently resolving network reordering via direct index mapping. If a packet is lost in transit, it utilizes the surviving peer packet and the XOR packet to regenerate the lost payload instantly without network blocking. A precision <code>select()</code> timeout loop strictly syncs playout with the harness deadline schedule.</li>
-    </ul>
+
+<h2>Architecture & Design Overview</h2>
+
+<p>
+To meet the strict real-time, low-latency constraints dictated by the 20 ms frame clock,
+standard ARQ feedback (NACKs) was avoided because retransmissions incur additional RTT
+over a hostile network. Instead, a transport-layer Forward Error Correction (FEC)
+scheme was implemented.
+</p>
+
+<ul>
+    <li><strong>Sender (Block-XOR FEC):</strong> Frames are grouped into pairs. Two
+    original packets are transmitted followed by one XOR parity packet, allowing
+    recovery from a single packet loss within the block while maintaining approximately
+    1.54× bandwidth overhead.</li>
+
+    <li><strong>Receiver (Jitter Buffer):</strong> A sequence-indexed receive buffer
+    handles packet reordering and duplicate suppression. Missing packets are recovered
+    using XOR parity whenever possible, and playout is synchronized with the harness
+    deadlines using a <code>select()</code>-based timing loop.</li>
+</ul>
+
+<h2>Final Results</h2>
+
+<ul>
+    <li>Target playout delay: <strong>100 ms</strong></li>
+    <li>Profile A: VALID</li>
+    <li>Profile B: VALID</li>
+    <li>Bandwidth overhead: approximately <strong>1.54×</strong></li>
+    <li>Deadline misses: below the required <strong>1%</strong> threshold at the submitted delay.</li>
+</ul>
+
 </body>
 </html>
